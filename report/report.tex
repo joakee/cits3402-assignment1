@@ -1,0 +1,133 @@
+%==============================================================================
+% CITS3402/CITS5507 Assignment 1 — Report template
+%
+% Build:  pdflatex report.tex && pdflatex report.tex
+%         (twice, so the ToC/refs settle)
+%
+% Word count (target 1000 +/- 100, body text only):
+%         texcount -inc -sum -1 report.tex
+% The \wordcountnote command below prints a reminder; delete it before you
+% submit.
+%==============================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+%------------------------------------------------------------------ packages --
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{microtype}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}          % proper table rules
+\usepackage{siunitx}           % \SI{1.23}{\second}, aligned numeric columns
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+
+%--------------------------------------------------------------- code listing --
+\definecolor{codegray}{gray}{0.95}
+\lstdefinestyle{c}{
+  language=C,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue!60!black},
+  commentstyle=\color{green!40!black}\itshape,
+  stringstyle=\color{red!60!black},
+  backgroundcolor=\color{codegray},
+  numbers=left, numberstyle=\tiny\color{gray}, numbersep=6pt,
+  breaklines=true, showstringspaces=false, frame=none,
+  morekeywords={\#pragma,omp,parallel,for,critical,atomic,uint64_t,uint32_t,size_t}
+}
+\lstset{style=c}
+
+%---------------------------------------------------------------- convenience --
+\newcommand{\toyhash}{\texttt{toy\_hash}}
+\newcommand{\wordcountnote}[1]{\marginpar{\scriptsize\textcolor{gray}{#1}}}
+
+\sisetup{round-mode=places, round-precision=2, table-format=3.2}
+
+%--------------------------------------------------------------------- title --
+\Huge \title{\vspace{-2em}CITS3402 - High Performance Computing\\[0.3em]
+\LARGE Assignment 1: Report  \\[1.0em]
+\large The University of Western Australia}
+
+\date{Semester 2, 2026}
+
+% Group of two: list both. Solo: delete the second block.
+\author{
+  James Oakey \quad (\texttt{22709404})\\
+  \and
+  Brent Tankink\quad (\texttt{23842541})
+}
+
+
+\begin{document}
+\maketitle
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+
+
+%==============================================================================
+\section{Birthday-attack algorithm}
+%==============================================================================
+
+\subsection{Search strategy}
+
+
+\subsection{Expected number of trials}
+
+
+\subsection{Collision-detection data structure}
+
+%==============================================================================
+\section{Parallelisation with OpenMP}
+%==============================================================================
+
+\subsection{Decomposition}
+
+
+
+\subsection{Race conditions on the shared table}
+
+\subsection{Other correctness concerns}
+
+
+%==============================================================================
+\section{Memory usage and trade-offs}
+%==============================================================================
+
+
+
+%==============================================================================
+\section{Performance evaluation}
+%==============================================================================
+
+\subsection{Methodology}
+
+
+
+
+\subsection{Speedup and scalability}
+
+\subsection{Discussion}
+
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+
+%==============================================================================
+\appendix
+\section{Reproducing the results}
+
+\end{document}
