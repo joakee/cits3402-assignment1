@@ -37,3 +37,6 @@
 *.acn
 *.acr
 *.alg
+
+# mac bs
+.DS_Store
