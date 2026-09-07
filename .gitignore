@@ -1,0 +1,39 @@
+# LaTeX build artefacts (report/report.pdf is kept — it's the submission)
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+
+# latexmk
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.synctex(busy)
+
+# pgfplots / tikz externalisation
+*.auxlock
+*.dpth
+*.md5
+*.figlist
+*.makefile
+*-figure*.pdf
+
+# listings / misc
+*.lol
+*.idx
+*.ilg
+*.ind
+*.glo
+*.gls
+*.acn
+*.acr
+*.alg
