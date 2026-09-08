@@ -130,5 +130,6 @@ int main(int argc, char *argv[]) {
     printf("[debug] Wrote student ID to %s\n", out2);
 
     free(pdf1);
+    free(pdf2);
     return EXIT_SUCCESS;
 }
