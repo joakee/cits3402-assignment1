@@ -1,8 +1,6 @@
 #include "pdf_header.h"
 
 #include <string.h>
-#include <stddef.h>
-#include <string.h>
 
 void set_nonce(unsigned char *pdf, uint64_t nonce)
 {
@@ -18,4 +16,10 @@ void set_nonce(unsigned char *pdf, uint64_t nonce)
 void set_student_number(unsigned char *pdf, const char *id)
 {
     memcpy(pdf + STUDENT_ID_OFFSET, id, STUDENT_ID_LENGTH);
+}
+
+int verify_sn(const unsigned char *pdf, const char *expected_id) {
+    return memcmp(pdf + STUDENT_ID_OFFSET,
+                  expected_id,
+                  STUDENT_ID_LENGTH) == 0;
 }

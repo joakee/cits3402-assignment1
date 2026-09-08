@@ -10,5 +10,7 @@
 
 void set_nonce(unsigned char *pdf, uint64_t nonce);
 void set_student_number(unsigned char *pdf, const char *id);
+int verify_sn(const unsigned char *pdf, const char *expected_id);
+
 
 #endif
