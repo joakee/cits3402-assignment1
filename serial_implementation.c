@@ -112,15 +112,22 @@ int main(int argc, char *argv[]) {
     }
 
 
-    char out1[1024];
+    char out1[1024]; char out2[1024];
     solved_path(path1, out1, sizeof out1);
+    solved_path(path2, out2, sizeof out2);
+
 
     if (!save_pdf(out1, pdf1, size1)) {
         free(pdf1);
         return EXIT_FAILURE;
     }
+    if (!save_pdf(out2, pdf2, size2)) {
+        free(pdf2);
+        return EXIT_FAILURE;
+    }
 
-    printf("Wrote student ID to %s\n", out1);
+    printf("[debug] Wrote student ID to %s\n", out1);
+    printf("[debug] Wrote student ID to %s\n", out2);
 
     free(pdf1);
     return EXIT_SUCCESS;
