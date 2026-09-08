@@ -40,3 +40,15 @@
 
 # mac bs
 .DS_Store
+
+# compiled binaries
+serial_implementation
+openmp_implementation
+*.o
+
+# editor
+.vscode/
+
+# agents
+.claude/
+.codex/
