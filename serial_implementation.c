@@ -10,8 +10,9 @@
 
 #define SOLVED_DIR "solved"
 
-/* Read an entire PDF into memory. Returns the buffer (caller frees) or NULL.
-   The length is handed back through out_size, since writing it out later needs it. */
+// reads a whole ass pdf into memory
+// returns the buffer (in which case the caller frees), or returns NULL
+// length is handed back via out_size (needed for writing it back out later)
 static unsigned char *load_pdf(const char *path, size_t *out_size)
 {
     FILE *f = fopen(path, "rb");
@@ -19,6 +20,7 @@ static unsigned char *load_pdf(const char *path, size_t *out_size)
 
     if (fseek(f, 0, SEEK_END) != 0) { perror(path); fclose(f); return NULL; }
     long len = ftell(f);
+
     if (len < 0) { perror(path); fclose(f); return NULL; }
     rewind(f);
 
@@ -43,7 +45,8 @@ static unsigned char *load_pdf(const char *path, size_t *out_size)
     return buf;
 }
 
-/* Write a buffer out as a new file. Returns 1 on success, 0 on failure. */
+// write the buffer out to a new file under `solved/` (for now)
+// returns 1 on yay, 0 on nay
 static int save_pdf(const char *path, const unsigned char *buf, size_t len)
 {
     FILE *f = fopen(path, "wb");
@@ -55,12 +58,12 @@ static int save_pdf(const char *path, const unsigned char *buf, size_t len)
         return 0;
     }
 
-    /* fclose can fail on flush, so a successful fwrite alone isn't enough. */
+    // fclose could fail on flush, so a good fwrite isn't enough unto itseld */
     if (fclose(f) != 0) { perror(path); return 0; }
     return 1;
 }
 
-/* "test_files/1_kilo_a.pdf" -> "solved/1_kilo_a.pdf" */
+// "test_files/1_kilo_a.pdf" -> "solved/1_kilo_a.pdf" 
 static void solved_path(const char *path, char *out, size_t out_size)
 {
     const char *base = strrchr(path, '/');
@@ -75,6 +78,7 @@ int main(int argc, char *argv[]) {
     }
 
     const char *path1 = argv[1];
+    const char *path2 = argv[2];
     const char *sn    = argv[3];
 
     if (strlen(sn) != STUDENT_ID_LENGTH) {
@@ -87,17 +91,26 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    size_t size1;
+    size_t size1; size_t size2;
+
     unsigned char *pdf1 = load_pdf(path1, &size1);
+    unsigned char *pdf2 = load_pdf(path2, &size2);
     if (!pdf1) return EXIT_FAILURE;
 
     set_student_number(pdf1, sn);
-
     if (!verify_sn(pdf1, sn)) {
         fprintf(stderr, "Write of student ID to %s failed.\n", path1);
         free(pdf1);
         return EXIT_FAILURE;
     }
+
+    set_student_number(pdf2, sn);
+    if (!verify_sn(pdf2, sn)) {
+        fprintf(stderr, "Write of student ID to %s failed.\n", path1);
+        free(pdf1);
+        return EXIT_FAILURE;
+    }
+
 
     char out1[1024];
     solved_path(path1, out1, sizeof out1);
