@@ -11,18 +11,22 @@
 
 #define SOLVED_DIR "solved"
 
+#define PDF1 0
+#define PDF2 1
+
 // struct for storing hashes and their respective nonces
 // each entry will store the nonce value which was tried,
 // the corresponding hash output, and the file associated
 typedef struct HashEntry {
     uint64_t nonce;
     uint64_t hash;
-    int file; // If File A --> file == 0, if File B --> file == 1
+    int file; // If PDF 1 --> file == 0, if PDF 2 --> file == 1
 } HashEntry;
 
 // Hash table will store the entries of attempted hash/nonce pairs
 typedef struct HashTable {
-    HashEntry *entries;
+    uint64_t size;
+    HashEntry entries[];
 } HashTable;
 
 // reads a whole ass pdf into memory
@@ -154,20 +158,58 @@ int main(int argc, char *argv[]) {
     }
 
     // TEST HASHES HERE
-    uint64_t nonce = 0;
-    uint64_t loop_upper_bound = 2ULL << 47; // 2^(48) but through bit shift
+    // Initialise a HashTable
+    HashTable *hash_table = malloc(5000000008);
+    hash_table->size = 0;
+
+    uint64_t nonce_min = 0;
+    uint64_t nonce_max = 2ULL << 47;
+    uint64_t loop_upper_bound = nonce_max; // 2^(48) but through bit shift
     for (uint64_t i = 0; i < loop_upper_bound; i++) {
         // Assign both PDFs to have the same nonce
-        set_nonce(pdf1, nonce);
-        set_nonce(pdf2, nonce);
+        set_nonce(pdf1, nonce_min);
+        set_nonce(pdf2, nonce_max);
 
         // Hash the updated PDFs
         uint64_t hash_pdf1 = toy_hash(pdf1, size1);
         uint64_t hash_pdf2 = toy_hash(pdf2, size2);
-        HashEntry entry_pdf1 = 
+        HashEntry entry_pdf1 = {nonce_min, hash_pdf1, PDF1};
+        HashEntry entry_pdf2 = {nonce_max, hash_pdf2, PDF2};
+
+        if (hash_pdf1 == hash_pdf2) {
+            break;
+        }
 
         // Check if created hash's are in HashTable already
+        int is_broken = 0;
+        int is_in_there = 0;
+        for (uint64_t j = 0; j < hash_table->size; j++) {
+            if (hash_table->entries[j].hash == entry_pdf1.hash && hash_table->entries[j].file == PDF2) {
+                is_broken = 1;
+                break;
+            }
+            if (hash_table->entries[j].hash == entry_pdf2.hash && hash_table->entries[j].file == PDF1) {
+                is_broken = 1;
+                break;
+            }
+        }
+        if (is_broken) {
+            break;
+        }
 
+        if (hash_table->size == 0) {
+            hash_table->entries[0] = entry_pdf1;
+            hash_table->entries[1] = entry_pdf2;
+            hash_table->size = 2;
+            nonce_min += 1;
+            nonce_max -= 1;
+        } else {
+            hash_table->entries[hash_table->size] = entry_pdf1;
+            hash_table->entries[hash_table->size + 1] = entry_pdf2;
+            hash_table->size += 2;
+            nonce_min += 1;
+            nonce_max -= 1;
+        }
     }
 
 
