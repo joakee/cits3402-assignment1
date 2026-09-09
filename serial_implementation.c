@@ -10,6 +10,20 @@
 
 #define SOLVED_DIR "solved"
 
+// struct for storing hashes and their respective nonces
+// each entry will store the nonce value which was tried,
+// the corresponding hash output, and the file associated
+typedef struct HashEntry {
+    uint64_t nonce;
+    uint64_t hash;
+    int file; // If File A --> file == 0, if File B --> file == 1
+} HashEntry;
+
+// Hash table will store the entries of attempted hash/nonce pairs
+typedef struct HashTable {
+    HashEntry *entries;
+} HashTable;
+
 // reads a whole ass pdf into memory
 // returns the buffer (in which case the caller frees), or returns NULL
 // length is handed back via out_size (needed for writing it back out later)
@@ -136,6 +150,12 @@ int main(int argc, char *argv[]) {
         free(pdf1);
         free(pdf2);
         return EXIT_FAILURE;
+    }
+
+    // TEST HASHES HERE
+    uint64_t nonce = 0;
+    for (uint64_t i = 0; i < 2<<48; i++) {
+        
     }
 
 
