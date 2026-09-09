@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include "pdf_header.h"
+#include "toy_hash.h"
 
 #define SOLVED_DIR "solved"
 
@@ -154,8 +155,19 @@ int main(int argc, char *argv[]) {
 
     // TEST HASHES HERE
     uint64_t nonce = 0;
-    for (uint64_t i = 0; i < 2<<48; i++) {
-        
+    uint64_t loop_upper_bound = 2ULL << 47; // 2^(48) but through bit shift
+    for (uint64_t i = 0; i < loop_upper_bound; i++) {
+        // Assign both PDFs to have the same nonce
+        set_nonce(pdf1, nonce);
+        set_nonce(pdf2, nonce);
+
+        // Hash the updated PDFs
+        uint64_t hash_pdf1 = toy_hash(pdf1, size1);
+        uint64_t hash_pdf2 = toy_hash(pdf2, size2);
+        HashEntry entry_pdf1 = 
+
+        // Check if created hash's are in HashTable already
+
     }
 
 
