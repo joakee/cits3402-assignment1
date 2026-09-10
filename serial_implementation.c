@@ -209,6 +209,8 @@ int main(int argc, char *argv[]) {
 
     uint64_t nonce_min = 0;
     uint64_t nonce_max = 2ULL << 47;
+    int found = 0;            // (Y1/N0)
+    uint64_t n1 = 0, n2 = 0; // matched nonce pair
     // stop once the table is nearly full, the birthday
     // paradox hd more than a fair shot atp (>~99.99%, 50M pairs)
     uint64_t loop_upper_bound = MAX_TRIES;
@@ -217,10 +219,10 @@ int main(int argc, char *argv[]) {
         set_nonce(pdf1, nonce_min);
         set_nonce(pdf2, nonce_max);
 
-        // Hash the updated PDFs and run each one through the table. the
-        // other file having already produced that hash means we're done 
-        // including the same-try case, since pdf1 lands in the table
-        // before pdf2 comes looking
+        // hash updated PDFs and run each one through the table. the
+        // other file having already spat out that hash means we stop
+        // computing the same-try case; pdf1 lands in the table before 
+        // pdf2 rocks up to the bbq
         uint64_t hash_pdf1 = toy_hash(pdf1, size1);
         uint64_t hash_pdf2 = toy_hash(pdf2, size2);
 
@@ -228,11 +230,17 @@ int main(int argc, char *argv[]) {
         if (insert_or_match(hash_table, hash_pdf1, nonce_min, PDF1, &matched_nonce)) {
             printf("[debug] collision: pdf1 nonce %llu hits a pdf2 hash (nonce %llu)\n",
                    (unsigned long long)nonce_min, (unsigned long long)matched_nonce);
+            n1 = nonce_min;
+            n2 = matched_nonce;
+            found = 1;
             break;
         }
         if (insert_or_match(hash_table, hash_pdf2, nonce_max, PDF2, &matched_nonce)) {
             printf("[debug] collision: pdf2 nonce %llu hits a pdf1 hash (nonce %llu)\n",
                    (unsigned long long)nonce_max, (unsigned long long)matched_nonce);
+            n2 = nonce_max;
+            n1 = matched_nonce;
+            found = 1;
             break;
         }
 
@@ -241,11 +249,37 @@ int main(int argc, char *argv[]) {
     }
 
     free(hash_table);
+    if (!found) {
+        fprintf(stderr, "no collision found after %llu tries\n",
+               (unsigned long long)loop_upper_bound);
+    free(pdf1);
+    free(pdf2);
+    return EXIT_FAILURE;
+}
+
+    // buffers hold last tried nonces, not the matched pair
+    // rearm them w the winners before anything else is written
+    set_nonce(pdf1, n1);
+    set_nonce(pdf2, n2);
 
 
     char out1[1024]; char out2[1024];
     solved_path(path1, out1, sizeof(out1));
     solved_path(path2, out2, sizeof(out2));
+
+    uint64_t h1 = toy_hash(pdf1, size1);
+    uint64_t h2 = toy_hash(pdf2, size2);
+    if (h1 != h2) {
+        fprintf(stderr, "internal error: matched pair failed re-verification "
+                    "(%012llx vs %012llx)\n",
+                    (unsigned long long)h1, (unsigned long long)h2);
+        free(pdf1);
+        free(pdf2);
+        return EXIT_FAILURE;
+    }
+
+    printf("collision verified: nonce1=%llu nonce2=%llu shared hash=%012llx\n",
+        (unsigned long long)n1, (unsigned long long)n2, (unsigned long long)h1);
 
 
     if (!save_pdf(out1, pdf1, size1)) {
