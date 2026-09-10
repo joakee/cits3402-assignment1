@@ -11,23 +11,35 @@
 
 #define SOLVED_DIR "solved"
 
-#define PDF1 0
-#define PDF2 1
+// which file a table entry came from; 
+// 1, 2 = pdf (or at least something) is there, 
+//    0 = empty/unused 
+#define PDF1 1
+#define PDF2 2
 
-// struct for storing hashes and their respective nonces
-// each entry will store the nonce value which was tried,
-// the corresponding hash output, and the file associated
+// one slot in the collision table; the 48-bit hash and the file tag are
+// packed into a single word so a slot is 16 bytes, and an all-zero slot
+// reads as empty (a real entry always has the file bits set, even when the
+// hash itself happens to be 0)
+
+// repreresents a single slot in the collision table
+// - 1 slot = 16 bytes  
+//          = 48 bit hash + 16 bit file tag + 64 bit nonce 
+//          = 64 bit tag + 64 bit nonce
+//          = 8 byte tag + 8 byte nonce = 16 byte HashEntry  
 typedef struct HashEntry {
-    uint64_t nonce;
-    uint64_t hash;
-    int file; // If PDF 1 --> file == 0, if PDF 2 --> file == 1
+    uint64_t tag;   // (file << 48) | hash
+    uint64_t nonce; // the nonce that produced this hash
 } HashEntry;
 
-// Hash table will store the entries of attempted hash/nonce pairs
-typedef struct HashTable {
-    uint64_t size;
-    HashEntry entries[];
-} HashTable;
+#define HASH_MASK  0x0000ffffffffffffULL // toy_hash only outputs 48 bits
+#define TABLE_CAP  (1ULL << 27)          // 2^27 slots * 16 B = 2 GiB
+#define TABLE_MASK (TABLE_CAP - 1)
+#define MAX_TRIES  50000000ULL            // bail out after this many nonce pairs
+
+// every pass of the search loop adds at most 2 entries, so MAX_TRIES keeps
+// the table at most about 75% full to make sure the probe is given an empty slot
+_Static_assert(2 * MAX_TRIES < TABLE_CAP, "MAX_TRIES would overflow the table");
 
 // reads a whole ass pdf into memory
 // returns the buffer (in which case the caller frees), or returns NULL
@@ -95,7 +107,7 @@ static int save_pdf(const char *path, const unsigned char *buf, size_t len)
         return 0;
     }
 
-    // fclose could fail on flush, so a good fwrite isn't enough unto itself */
+    // fclose could fail on flush, so a good fwrite isn't enough unto itself
     if (fclose(f) != 0) {
         perror(path);
         return 0;
@@ -108,6 +120,33 @@ static void solved_path(const char *path, char *out, size_t out_size) {
     const char *base = strrchr(path, '/');
     base = base ? base + 1 : path;
     snprintf(out, out_size, SOLVED_DIR "/%s", base);
+}
+
+// drop (hash, nonce, file) into the table, unless the OTHER file already
+// produced the same hash earlier; in which case the collision has been found
+// returns 1 on that cross-file match  (*matched_nonce gets the stored entry's nonce), 
+// 0 otherwise, &the entry gets stored
+static int insert_or_match(HashEntry *table, uint64_t hash, uint64_t nonce,
+                           int file, uint64_t *matched_nonce)
+{
+    uint64_t tag = ((uint64_t)file << 48) | hash;
+
+    // linear probing -- toy_hash is well mixed already, so the low bits of
+    // the hash make a fine starting index
+    uint64_t i = hash & TABLE_MASK;
+    for (; table[i].tag != 0; i = (i + 1) & TABLE_MASK) {
+        if (table[i].tag == tag) {
+            return 0; // this file already produced this hash
+        }
+        if ((table[i].tag & HASH_MASK) == hash) {
+            *matched_nonce = table[i].nonce; // the other file got there first
+            return 1;
+        }
+    }
+
+    table[i].tag = tag;
+    table[i].nonce = nonce;
+    return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -158,59 +197,50 @@ int main(int argc, char *argv[]) {
     }
 
     // TEST HASHES HERE
-    // Initialise a HashTable
-    HashTable *hash_table = malloc(5000000008);
-    hash_table->size = 0;
+    // The collision table. calloc zeroes every slot, and zero means empty 
+    HashEntry *hash_table = calloc(TABLE_CAP, sizeof(HashEntry));
+    if (!hash_table) {
+        fprintf(stderr, "out of memory for the hash table (%llu slots)\n",
+                (unsigned long long)TABLE_CAP);
+        free(pdf1);  
+        free(pdf2);
+        return EXIT_FAILURE;
+    }
 
     uint64_t nonce_min = 0;
     uint64_t nonce_max = 2ULL << 47;
-    uint64_t loop_upper_bound = nonce_max; // 2^(48) but through bit shift
+    // stop once the table is nearly full, the birthday
+    // paradox hd more than a fair shot atp (>~99.99%, 50M pairs)
+    uint64_t loop_upper_bound = MAX_TRIES;
     for (uint64_t i = 0; i < loop_upper_bound; i++) {
         // Assign both PDFs to have the same nonce
         set_nonce(pdf1, nonce_min);
         set_nonce(pdf2, nonce_max);
 
-        // Hash the updated PDFs
+        // Hash the updated PDFs and run each one through the table. the
+        // other file having already produced that hash means we're done 
+        // including the same-try case, since pdf1 lands in the table
+        // before pdf2 comes looking
         uint64_t hash_pdf1 = toy_hash(pdf1, size1);
         uint64_t hash_pdf2 = toy_hash(pdf2, size2);
-        HashEntry entry_pdf1 = {nonce_min, hash_pdf1, PDF1};
-        HashEntry entry_pdf2 = {nonce_max, hash_pdf2, PDF2};
 
-        if (hash_pdf1 == hash_pdf2) {
+        uint64_t matched_nonce; // the other file's nonce that we collided with
+        if (insert_or_match(hash_table, hash_pdf1, nonce_min, PDF1, &matched_nonce)) {
+            printf("[debug] collision: pdf1 nonce %llu hits a pdf2 hash (nonce %llu)\n",
+                   (unsigned long long)nonce_min, (unsigned long long)matched_nonce);
+            break;
+        }
+        if (insert_or_match(hash_table, hash_pdf2, nonce_max, PDF2, &matched_nonce)) {
+            printf("[debug] collision: pdf2 nonce %llu hits a pdf1 hash (nonce %llu)\n",
+                   (unsigned long long)nonce_max, (unsigned long long)matched_nonce);
             break;
         }
 
-        // Check if created hash's are in HashTable already
-        int is_broken = 0;
-        int is_in_there = 0;
-        for (uint64_t j = 0; j < hash_table->size; j++) {
-            if (hash_table->entries[j].hash == entry_pdf1.hash && hash_table->entries[j].file == PDF2) {
-                is_broken = 1;
-                break;
-            }
-            if (hash_table->entries[j].hash == entry_pdf2.hash && hash_table->entries[j].file == PDF1) {
-                is_broken = 1;
-                break;
-            }
-        }
-        if (is_broken) {
-            break;
-        }
-
-        if (hash_table->size == 0) {
-            hash_table->entries[0] = entry_pdf1;
-            hash_table->entries[1] = entry_pdf2;
-            hash_table->size = 2;
-            nonce_min += 1;
-            nonce_max -= 1;
-        } else {
-            hash_table->entries[hash_table->size] = entry_pdf1;
-            hash_table->entries[hash_table->size + 1] = entry_pdf2;
-            hash_table->size += 2;
-            nonce_min += 1;
-            nonce_max -= 1;
-        }
+        nonce_min += 1;
+        nonce_max -= 1;
     }
+
+    free(hash_table);
 
 
     char out1[1024]; char out2[1024];
