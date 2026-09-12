@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <time.h>
 #include "pdf_header.h"
 #include "toy_hash.h"
 
@@ -39,19 +40,21 @@ typedef struct HashEntry {
 
 // every pass of the search loop adds at most 2 entries, so MAX_TRIES keeps
 // the table at most about 75% full to make sure the probe is given an empty slot
-_Static_assert(2 * MAX_TRIES < TABLE_CAP, "MAX_TRIES would overflow the table");
+_Static_assert(2 * MAX_TRIES < TABLE_CAP, "MAX_TRIES would overflow the table"); // IS THIS PART NECESSARY? IT IS HARD-CODED
 
 // reads a whole ass pdf into memory
 // returns the buffer (in which case the caller frees), or returns NULL
 // length is handed back via out_size (needed for writing it back out later)
 static unsigned char *load_pdf(const char *path, size_t *out_size)
 {
+    // open file for 'reading binary'
     FILE *f = fopen(path, "rb");
     if (!f) {
         perror(path);
         return NULL;
     }
 
+    // seek to the end to find the file length
     if (fseek(f, 0, SEEK_END) != 0) {
         perror(path);
         fclose(f);
@@ -64,6 +67,7 @@ static unsigned char *load_pdf(const char *path, size_t *out_size)
         fclose(f);
         return NULL;
     }
+    // go back to the beginning so we can copy the pdf for solving
     rewind(f);
 
     if (len < STUDENT_ID_OFFSET + STUDENT_ID_LENGTH) {
@@ -95,6 +99,7 @@ static unsigned char *load_pdf(const char *path, size_t *out_size)
 // returns 1 on yay, 0 on nay
 static int save_pdf(const char *path, const unsigned char *buf, size_t len)
 {
+    // open file for 'write binary' so we can copy pdf contents
     FILE *f = fopen(path, "wb");
     if (!f) {
         perror(path);
@@ -129,6 +134,7 @@ static void solved_path(const char *path, char *out, size_t out_size) {
 static int insert_or_match(HashEntry *table, uint64_t hash, uint64_t nonce,
                            int file, uint64_t *matched_nonce)
 {
+    // add an int to represent which file in the unused 16 bits of the uint64_t
     uint64_t tag = ((uint64_t)file << 48) | hash;
 
     // linear probing -- toy_hash is well mixed already, so the low bits of
@@ -214,6 +220,10 @@ int main(int argc, char *argv[]) {
     // stop once the table is nearly full, the birthday
     // paradox hd more than a fair shot atp (>~99.99%, 50M pairs)
     uint64_t loop_upper_bound = MAX_TRIES;
+
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     for (uint64_t i = 0; i < loop_upper_bound; i++) {
         // Assign both PDFs to have the same nonce
         set_nonce(pdf1, nonce_min);
@@ -248,6 +258,9 @@ int main(int argc, char *argv[]) {
         nonce_max -= 1;
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    double time_difference = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_nsec - start_time.tv_nsec) / 1e9;
+
     free(hash_table);
     if (!found) {
         fprintf(stderr, "no collision found after %llu tries\n",
@@ -280,6 +293,7 @@ int main(int argc, char *argv[]) {
 
     printf("collision verified: nonce1=%llu nonce2=%llu shared hash=%012llx\n",
         (unsigned long long)n1, (unsigned long long)n2, (unsigned long long)h1);
+    printf("elapsed nonce calculation time: %f\n", time_difference);
 
 
     if (!save_pdf(out1, pdf1, size1)) {
