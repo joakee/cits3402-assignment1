@@ -253,6 +253,9 @@ int main(int argc, char *argv[]) {
             found = 1;
             break;
         }
+
+        nonce_min += i;
+        nonce_max -= i;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end_time);
