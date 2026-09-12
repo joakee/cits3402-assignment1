@@ -225,7 +225,8 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     for (uint64_t i = 0; i < loop_upper_bound; i++) {
-        // Assign both PDFs to have the same nonce
+        // Assign both PDFs to nonces which start on opposite ends of the range,
+        // the min then increments and the max decrements with each iteration
         set_nonce(pdf1, nonce_min);
         set_nonce(pdf2, nonce_max);
 
