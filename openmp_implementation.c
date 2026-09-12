@@ -244,18 +244,33 @@ int main(int argc, char *argv[]) {
       // workload is even between all threads, each has to `set_nonce()`,
       // `toy_hash()` and `insert_or_match()`, therefore the most obvious
       // scheduling choice is `schedule(static)`
-      #pragma omp parallel for schedule(static)
+      #pragma omp for schedule(static)
       for (uint64_t i = 0; i < loop_upper_bound; i++) {
-        // Assign both PDFs to have the same nonce
-        set_nonce(pdf1, nonce_min + i);
-        set_nonce(pdf2, nonce_max - i);
+        // before any computation, check if `found` is already flagged
+        // if so, skip all the hashing and checking;
+        // comes with a performance trade-off, the parallel for loop
+        // cannot cancel early and has to finish all iterations, for
+        // this reason we use `continue`
+        int collision_already_found;
+
+        #pragma omp atomic read
+        collision_already_found = found;
+        if (collision_already_found) {
+          continue;
+        }
+
+        // now we can set the nonces for each thread
+        uint64_t nonce_1 = nonce_min + i;
+        uint64_t nonce_2 = nonce_max - i;
+        set_nonce(local_pdf1, nonce_1);
+        set_nonce(local_pdf2, nonce_2);
 
         // hash updated PDFs and run each one through the table. the
         // other file having already spat out that hash means we stop
         // computing the same-try case; pdf1 lands in the table before 
         // pdf2 rocks up to the bbq
-        uint64_t hash_pdf1 = toy_hash(pdf1, size1);
-        uint64_t hash_pdf2 = toy_hash(pdf2, size2);
+        uint64_t hash_pdf1 = toy_hash(local_pdf1, size1);
+        uint64_t hash_pdf2 = toy_hash(local_pdf2, size2);
         uint64_t matched_nonce; // the other file's nonce that we collided with
         
         // the table update and checking must be a critical region in the program;
@@ -263,21 +278,24 @@ int main(int argc, char *argv[]) {
         // by one thread at a time to prevent race conditions
         #pragma omp critical (hash_table_update)
         {
-          if (insert_or_match(hash_table, hash_pdf1, nonce_min, PDF1, &matched_nonce)) {
+          // check whether `found` is updated in the small gap between the earlier check
+          // and the critical region. if `found`, skip the conditionals completely and
+          // continue the next iterations
+          if (!found) {
+            if (insert_or_match(hash_table, hash_pdf1, nonce_1, PDF1, &matched_nonce)) {
               printf("[debug] collision: pdf1 nonce %llu hits a pdf2 hash (nonce %llu)\n",
-                    (unsigned long long)nonce_min, (unsigned long long)matched_nonce);
-              n1 = nonce_min;
+                    (unsigned long long)nonce_1, (unsigned long long)matched_nonce);
+              n1 = nonce_1;
               n2 = matched_nonce;
               found = 1;
-              break;
-          } 
-          else if (insert_or_match(hash_table, hash_pdf2, nonce_max, PDF2, &matched_nonce)) {
-            printf("[debug] collision: pdf2 nonce %llu hits a pdf1 hash (nonce %llu)\n",
-                  (unsigned long long)nonce_max, (unsigned long long)matched_nonce);
-            n2 = nonce_max;
-            n1 = matched_nonce;
-            found = 1;
-            break;
+            } 
+            else if (insert_or_match(hash_table, hash_pdf2, nonce_2, PDF2, &matched_nonce)) {
+              printf("[debug] collision: pdf2 nonce %llu hits a pdf1 hash (nonce %llu)\n",
+                    (unsigned long long)nonce_2, (unsigned long long)matched_nonce);
+              n2 = nonce_2;
+              n1 = matched_nonce;
+              found = 1;
+            }
           }
         }
       }
