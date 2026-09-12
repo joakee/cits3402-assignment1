@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <time.h>
+#include <omp.h>
 #include "pdf_header.h"
 #include "toy_hash.h"
 
@@ -220,8 +222,30 @@ int main(int argc, char *argv[]) {
     // paradox hd more than a fair shot atp (>~99.99%, 50M pairs)
     uint64_t loop_upper_bound = MAX_TRIES;
 
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     // PARALLEL REGION STARTS
-    for (uint64_t i = 0; i < loop_upper_bound; i++) {
+    #pragma omp parallel
+    {
+      // each thread requires it's own copy of the pdf, this allows each to 
+      // modify the nonces without any interference with the others
+      unsigned char *local_pdf1 = malloc(size1);
+      unsigned char *local_pdf2 = malloc(size2);
+
+      // after mem allocation, copy the mem contents from original pdfs
+      memcpy(local_pdf1, pdf1, size1);
+      memcpy(local_pdf2, pdf2, size2);
+
+      // now that all memory is allocated, we can split the for loops between
+      // all threads, this way each thread will perform the hash on differing
+      // sets of values concurrently (hash will depend on loop index)
+      
+      // workload is even between all threads, each has to `set_nonce()`,
+      // `toy_hash()` and `insert_or_match()`, therefore the most obvious
+      // scheduling choice is `schedule(static)`
+      #pragma omp parallel for schedule(static)
+      for (uint64_t i = 0; i < loop_upper_bound; i++) {
         // Assign both PDFs to have the same nonce
         set_nonce(pdf1, nonce_min + i);
         set_nonce(pdf2, nonce_max - i);
@@ -232,31 +256,39 @@ int main(int argc, char *argv[]) {
         // pdf2 rocks up to the bbq
         uint64_t hash_pdf1 = toy_hash(pdf1, size1);
         uint64_t hash_pdf2 = toy_hash(pdf2, size2);
-
         uint64_t matched_nonce; // the other file's nonce that we collided with
-        // {{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{
-        // CRITICAL REGION FOR HASH CALCULATIONS
-        if (insert_or_match(hash_table, hash_pdf1, nonce_min, PDF1, &matched_nonce)) {
-            printf("[debug] collision: pdf1 nonce %llu hits a pdf2 hash (nonce %llu)\n",
-                   (unsigned long long)nonce_min, (unsigned long long)matched_nonce);
-            n1 = nonce_min;
-            n2 = matched_nonce;
-            found = 1;
-            break;
-        }
-        if (insert_or_match(hash_table, hash_pdf2, nonce_max, PDF2, &matched_nonce)) {
+        
+        // the table update and checking must be a critical region in the program;
+        // the `hash_table` is shared by all threads, so it should only be accessed
+        // by one thread at a time to prevent race conditions
+        #pragma omp critical (hash_table_update)
+        {
+          if (insert_or_match(hash_table, hash_pdf1, nonce_min, PDF1, &matched_nonce)) {
+              printf("[debug] collision: pdf1 nonce %llu hits a pdf2 hash (nonce %llu)\n",
+                    (unsigned long long)nonce_min, (unsigned long long)matched_nonce);
+              n1 = nonce_min;
+              n2 = matched_nonce;
+              found = 1;
+              break;
+          } 
+          else if (insert_or_match(hash_table, hash_pdf2, nonce_max, PDF2, &matched_nonce)) {
             printf("[debug] collision: pdf2 nonce %llu hits a pdf1 hash (nonce %llu)\n",
-                   (unsigned long long)nonce_max, (unsigned long long)matched_nonce);
+                  (unsigned long long)nonce_max, (unsigned long long)matched_nonce);
             n2 = nonce_max;
             n1 = matched_nonce;
             found = 1;
             break;
+          }
         }
-        // }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+      }
 
-        nonce_min += 1;
-        nonce_max -= 1;
+      // free each thread's local pdf buffer
+      free(local_pdf1);
+      free(local_pdf2);
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    double time_difference = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_nsec - start_time.tv_nsec) / 1e9;
 
     free(hash_table);
     if (!found) {
@@ -290,6 +322,7 @@ int main(int argc, char *argv[]) {
 
     printf("collision verified: nonce1=%llu nonce2=%llu shared hash=%012llx\n",
         (unsigned long long)n1, (unsigned long long)n2, (unsigned long long)h1);
+    printf("Elapsed nonce calculation time: %f\n", time_difference);
 
 
     if (!save_pdf(out1, pdf1, size1)) {
