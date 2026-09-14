@@ -1,3 +1,6 @@
+// James Oakey   - 22709404
+// Brent Tankink - 23842541
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

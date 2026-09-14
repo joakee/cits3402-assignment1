@@ -1,3 +1,6 @@
+// James Oakey   - 22709404
+// Brent Tankink - 23842541
+
 #ifndef TOY_HASH_H
 #define TOY_HASH_H
 

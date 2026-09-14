@@ -1,3 +1,6 @@
+// James Oakey   - 22709404
+// Brent Tankink - 23842541
+
 #include "toy_hash.h"
 
 uint64_t toy_hash(const unsigned char *p, size_t n)

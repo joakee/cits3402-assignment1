@@ -1,5 +1,9 @@
 # Brute Force Hash Birthday Attack in Parallel
 
+#### Built by: James Oakey (22709404) & Brent Tankink (23842541)
+
+<br>
+
 `serial_implementation.c` and `openmp_implementation.c` perform serial and parallel OpenMP birthday attacks on a pair of PDFs. They find nonce values for both PDFs which create a hash collision.
 
 It takes two PDF files as inputs, and an optional third argument `thread_count` to specify the number of threads the program should use (if this number is not specified, it defaults to the host system's maximum number of available threads.
