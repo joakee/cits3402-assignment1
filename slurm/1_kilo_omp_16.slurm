@@ -4,5 +4,4 @@
 #SBATCH --mem=8G
 #SBATCH --partition=cits3402
 
-export OMP_NUM_THREADS=16
-./openmp_implementation test_files/1_kilo_a.pdf test_files/1_kilo_b.pdf 22709404
+./openmp_implementation test_files/1_kilo_a.pdf test_files/1_kilo_b.pdf 16
