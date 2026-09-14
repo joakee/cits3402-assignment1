@@ -1,0 +1,5 @@
+[debug] collision: pdf1 nonce 12950536 hits a pdf2 hash (nonce 281474949957157)
+collision verified: nonce1=12950536 nonce2=281474949957157 shared hash=e0c35d6654ac
+Elapsed nonce calculation time: 63.198025
+[debug] Wrote student ID to solved/1_kilo_a.pdf
+[debug] Wrote student ID to solved/1_kilo_b.pdf
