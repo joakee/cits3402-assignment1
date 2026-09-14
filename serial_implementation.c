@@ -10,6 +10,8 @@
 #include "pdf_header.h"
 #include "toy_hash.h"
 
+#define _POSIX_C_SOURCE 199309L
+
 #define SOLVED_DIR "solved"
 
 // which file a table entry came from; 
@@ -222,7 +224,7 @@ int main(int argc, char *argv[]) {
     uint64_t loop_upper_bound = MAX_TRIES;
 
     struct timespec start_time, end_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+    timespec_get(&start_time, TIME_UTC);
 
     for (uint64_t i = 0; i < loop_upper_bound; i++) {
         // Assign both PDFs to nonces which start on opposite ends of the range,
@@ -255,11 +257,11 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        nonce_min += i;
-        nonce_max -= i;
+        nonce_min++;
+        nonce_max--;
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    timespec_get(&end_time, TIME_UTC);
     double time_difference = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_nsec - start_time.tv_nsec) / 1e9;
 
     free(hash_table);
