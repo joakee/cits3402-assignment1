@@ -42,7 +42,7 @@ typedef struct HashEntry {
 // the table at most about 75% full to make sure the probe is given an empty slot
 _Static_assert(2 * MAX_TRIES < TABLE_CAP, "MAX_TRIES would overflow the table"); // IS THIS PART NECESSARY? IT IS HARD-CODED
 
-// reads a whole ass pdf into memory
+// reads the whole pdf into memory
 // returns the buffer (in which case the caller frees), or returns NULL
 // length is handed back via out_size (needed for writing it back out later)
 static unsigned char *load_pdf(const char *path, size_t *out_size)
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
     unsigned char *pdf1 = load_pdf(path1, &size1);
     unsigned char *pdf2 = load_pdf(path2, &size2);
     if (!pdf1 || !pdf2) {
-        free(pdf1); // CAN I FREE A NULL POINTER???
+        free(pdf1);
         free(pdf2);
         return EXIT_FAILURE;
     }

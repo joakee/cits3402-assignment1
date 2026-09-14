@@ -43,7 +43,7 @@ typedef struct HashEntry {
 // the table at most about 75% full to make sure the probe is given an empty slot
 _Static_assert(2 * MAX_TRIES < TABLE_CAP, "MAX_TRIES would overflow the table"); // IS THIS PART NECESSARY? IT IS HARD-CODED
 
-// reads a whole ass pdf into memory
+// reads the whole pdf into memory
 // returns the buffer (in which case the caller frees), or returns NULL
 // length is handed back via out_size (needed for writing it back out later)
 static unsigned char *load_pdf(const char *path, size_t *out_size)
@@ -136,6 +136,7 @@ static int insert_or_match(HashEntry *table, uint64_t hash, uint64_t nonce,
                            int file, uint64_t *matched_nonce)
 {
     // add an int to represent which file in the unused 16 bits of the uint64_t
+    // combines the hash and the file number into the one 64-bit int
     uint64_t tag = ((uint64_t)file << 48) | hash;
 
     // linear probing -- toy_hash is well mixed already, so the low bits of
@@ -146,11 +147,12 @@ static int insert_or_match(HashEntry *table, uint64_t hash, uint64_t nonce,
             return 0; // this file already produced this hash
         }
         if ((table[i].tag & HASH_MASK) == hash) {
-            *matched_nonce = table[i].nonce; // the other file got there first
+            *matched_nonce = table[i].nonce; // the other file got there first, match found
             return 1;
         }
     }
 
+    // if nothing matches, insert the nonce and hash pair
     table[i].tag = tag;
     table[i].nonce = nonce;
     return 0;
@@ -177,6 +179,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    // create the solved directory to store the solved pdfs
     if (mkdir(SOLVED_DIR, 0755) != 0 && errno != EEXIST) {
         perror(SOLVED_DIR);
         return EXIT_FAILURE;
@@ -185,14 +188,16 @@ int main(int argc, char *argv[]) {
     size_t size1; 
     size_t size2;
 
+    // load both pdfs into memory
     unsigned char *pdf1 = load_pdf(path1, &size1);
     unsigned char *pdf2 = load_pdf(path2, &size2);
     if (!pdf1 || !pdf2) {
-        free(pdf1); // CAN I FREE A NULL POINTER???
+        free(pdf1);
         free(pdf2);
         return EXIT_FAILURE;
     }
 
+    // set the student number for both pdfs and verify they worked
     set_student_number(pdf1, sn);
     if (!verify_sn(pdf1, sn)) {
         fprintf(stderr, "Write of student ID to %s failed.\n", path1);
@@ -320,7 +325,7 @@ int main(int argc, char *argv[]) {
 }
 
     // buffers hold last tried nonces, not the matched pair
-    // rearm them w the winners before anything else is written
+    // rearm them with the winners before anything else is written
     set_nonce(pdf1, n1);
     set_nonce(pdf2, n2);
 
