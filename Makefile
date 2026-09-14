@@ -10,7 +10,6 @@ all: serial_implementation openmp_implementation
 serial_implementation: serial_implementation.c $(COMMON)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-# uncomment once openmp_implementation.c finally exists and add it to `all` above
 openmp_implementation: openmp_implementation.c $(COMMON)
 	$(CC) $(CFLAGS) -fopenmp -o $@ $^ $(LDLIBS)
 
