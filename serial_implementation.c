@@ -10,8 +10,6 @@
 #include "pdf_header.h"
 #include "toy_hash.h"
 
-#define _POSIX_C_SOURCE 199309L
-
 #define SOLVED_DIR "solved"
 
 // which file a table entry came from; 
@@ -158,19 +156,14 @@ static int insert_or_match(HashEntry *table, uint64_t hash, uint64_t nonce,
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        fprintf(stderr, "Usage: %s <pdf_file1> <pdf_file2> <student_id>\n", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <pdf_file1> <pdf_file2>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    const char *path1 = argv[1];
-    const char *path2 = argv[2];
-    const char *sn    = argv[3];
-
-    if (strlen(sn) != STUDENT_ID_LENGTH) {
-        fprintf(stderr, "Student ID must be exactly %d characters\n", STUDENT_ID_LENGTH);
-        return EXIT_FAILURE;
-    }
+    const char *path1        = argv[1];
+    const char *path2        = argv[2];
+    const char *sn           = "22709404";
 
     if (mkdir(SOLVED_DIR, 0755) != 0 && errno != EEXIST) {
         perror(SOLVED_DIR);
@@ -309,9 +302,6 @@ int main(int argc, char *argv[]) {
         free(pdf2);
         return EXIT_FAILURE;
     }
-
-    printf("[debug] Wrote student ID to %s\n", out1);
-    printf("[debug] Wrote student ID to %s\n", out2);
 
     free(pdf1);
     free(pdf2);

@@ -157,14 +157,20 @@ static int insert_or_match(HashEntry *table, uint64_t hash, uint64_t nonce,
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        fprintf(stderr, "Usage: %s <pdf_file1> <pdf_file2> <student_id>\n", argv[0]);
+    if (argc != 3 && argc != 4) {
+        fprintf(stderr, "Usage: %s <pdf_file1> <pdf_file2> <thread_count (default=96)>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
     const char *path1 = argv[1];
     const char *path2 = argv[2];
-    const char *sn    = argv[3];
+    const char *sn    = "22709404";
+    int thread_count  = 96;
+
+    if (argc == 4) {
+        char *endptr;
+        thread_count = strtol(argv[3], &endptr, 10);
+    }
 
     if (strlen(sn) != STUDENT_ID_LENGTH) {
         fprintf(stderr, "Student ID must be exactly %d characters\n", STUDENT_ID_LENGTH);
@@ -226,7 +232,7 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     // PARALLEL REGION STARTS
-    #pragma omp parallel
+    #pragma omp parallel num_threads(thread_count)
     {
       // each thread requires it's own copy of the pdf, this allows each to 
       // modify the nonces without any interference with the others
