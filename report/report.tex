@@ -75,17 +75,43 @@
 \section{Introduction}
 %==============================================================================
 
+This document outlines how the puzzling results of the Birthday Paradox can be
+exploited in order to brute force hash collisions. The goal is to alter the 
+'nonce' values in two PDF files, each with differing contents, in such a way 
+that the resultant hash is identical. 
 
+This collision is produced through the combination of nonce variation and the 
+Birthday Attack principle, which proves that collision probability increases 
+rapidly with less trials than is intuitively expected. 
 
 %==============================================================================
 \section{Birthday-attack algorithm}
 %==============================================================================
 
-\subsection{Search strategy}
+The implemented search strategy uses a Hash-Table data structure to store and 
+search through the calculated hashes. Rather than comparing every possible 
+nonce produced from one PDF file to the other, each calculated (hash+file) 
+combination is checked against those already in the table. Essentially, rather 
+than checking whether a match occurs with one specific hash, the program checks 
+whether a match occurs between any two hashes. 
 
+The `toy_hash` algorithm produces 48-bit hashes, meaning there are $2^{48}$ 
+possible hashes. Using the Birthday Paradox, the expected number of trials for 
+a 50\% collision probability follows $2^{\sqrt{48}}=2^{24}$, meaning 
+only ~16-17 million calculations are required to achieve this 50\% probability.
+To find an upper bound for the calculation process, the following formula can 
+be used: $P(\text{No Collision})\approx e^{-\frac{n^2}{2H}}$, where $n$ is the 
+number of trials required to achieve $P$ probability of no collision when there 
+are $H$ possible outputs. For a 99\% chance of producing a collision:
 
-\subsection{Expected number of trials}
+$$0.01=e^{-\frac{n^2}{2\times2^{48}}}\quad\rightarrow\quad n\approx51,000,000$$
 
+To store generated hashes, a hash table has been implemented using linear 
+probing. Each entry, `HashEntry`, contains a 64-bit tag and a 64-bit nonce, 
+making each entry 16 bytes. The `tag` attribute combines the PDF file number 
+(1 or 2) and the 48-bit file hash, making efficient use of space and allowing 
+the program to distinguish hashes from PDF1 and PDF2. This table is initialised 
+using `calloc`, making each entry 0. Whenever a new hash is generated, the 
 
 \subsection{Collision-detection data structure}
 
