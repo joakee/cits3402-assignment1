@@ -234,16 +234,12 @@ int main(int argc, char *argv[]) {
 
         uint64_t matched_nonce; // the other file's nonce that we collided with
         if (insert_or_match(hash_table, hash_pdf1, nonce_min, PDF1, &matched_nonce)) {
-            printf("[debug] collision: pdf1 nonce %llu hits a pdf2 hash (nonce %llu)\n",
-                   (unsigned long long)nonce_min, (unsigned long long)matched_nonce);
             n1 = nonce_min;
             n2 = matched_nonce;
             found = 1;
             break;
         }
         if (insert_or_match(hash_table, hash_pdf2, nonce_max, PDF2, &matched_nonce)) {
-            printf("[debug] collision: pdf2 nonce %llu hits a pdf1 hash (nonce %llu)\n",
-                   (unsigned long long)nonce_max, (unsigned long long)matched_nonce);
             n2 = nonce_max;
             n1 = matched_nonce;
             found = 1;

@@ -289,15 +289,11 @@ int main(int argc, char *argv[]) {
           // continue the next iterations
           if (!found) {
             if (insert_or_match(hash_table, hash_pdf1, nonce_1, PDF1, &matched_nonce)) {
-              printf("[debug] collision: pdf1 nonce %llu hits a pdf2 hash (nonce %llu)\n",
-                    (unsigned long long)nonce_1, (unsigned long long)matched_nonce);
               n1 = nonce_1;
               n2 = matched_nonce;
               found = 1;
             } 
             else if (insert_or_match(hash_table, hash_pdf2, nonce_2, PDF2, &matched_nonce)) {
-              printf("[debug] collision: pdf2 nonce %llu hits a pdf1 hash (nonce %llu)\n",
-                    (unsigned long long)nonce_2, (unsigned long long)matched_nonce);
               n2 = nonce_2;
               n1 = matched_nonce;
               found = 1;
@@ -359,9 +355,6 @@ int main(int argc, char *argv[]) {
         free(pdf2);
         return EXIT_FAILURE;
     }
-
-    printf("[debug] Wrote student ID to %s\n", out1);
-    printf("[debug] Wrote student ID to %s\n", out2);
 
     free(pdf1);
     free(pdf2);
