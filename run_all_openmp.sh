@@ -10,7 +10,7 @@
 #------------------------------
 set -uo pipefail
 
-sn="${1:-012345678}"
+sn="${1:-01234567}"
 
 # the repo root has gotta be wherever this script lives
 repo="$(cd "$(dirname "$0")" && pwd)"
