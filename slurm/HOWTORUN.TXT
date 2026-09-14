@@ -1,0 +1,4 @@
+Submit from the repo root, ie. sbatch slurm/1_kilo_omp_96.slurm. 
+
+paths inside are relative to where sbatch is called from,
+so running it from inside slurm/ won't find test_files/.
