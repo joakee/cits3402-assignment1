@@ -166,7 +166,6 @@ int main(int argc, char *argv[]) {
     const char *path2 = argv[2];
     const char *sn    = "22709404";
     int thread_count  = omp_get_max_threads();
-    printf("%d\n", thread_count);
 
     if (argc == 4) {
         char *endptr;
