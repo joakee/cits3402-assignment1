@@ -1,4 +1,4 @@
-
+#!/usr/bin/env bash
 # usage: ./submit_all_slurm.sh
 
 set -uo pipefail
@@ -11,5 +11,5 @@ cd "$repo" || exit 1
 make openmp_implementation || exit 1
 
 for f in slurm/*.slurm; do
-    sbatch -J "$(basename "$f" .slurm)" -o "%x_%j.out" "$f"
+    sbatch -J "$(basename "$f" .slurm)" -o "slurm/%x_%j.out" "$f"
 done
