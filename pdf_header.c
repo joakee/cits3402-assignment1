@@ -1,3 +1,6 @@
+// James Oakey   - 22709404
+// Brent Tankink - 23842541
+
 #include "pdf_header.h"
 
 #include <string.h>

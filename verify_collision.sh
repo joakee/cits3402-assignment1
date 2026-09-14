@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# James Oakey (22709404)
+# Brent Tankink (23842541)
+
 # compiles a lil helper against `toy_hash.c` (so the hash is, hashes both
 # files as they sit on disk, and compares. Meant for the files  serial_implementation 
 # writes to solved/.

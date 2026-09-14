@@ -1,3 +1,6 @@
+// James Oakey   - 22709404
+// Brent Tankink - 23842541
+
 #ifndef PDF_HEADER_H
 #define PDF_HEADER_H
 

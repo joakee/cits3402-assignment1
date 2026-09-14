@@ -77,10 +77,8 @@
 
 This document outlines how the puzzling results of the Birthday Paradox can be
 exploited in order to brute force hash collisions. The goal is to alter the 
-'nonce' values in two PDF files, each with differing contents, in such a way 
-that the resultant hash is identical. 
-
-This collision is produced through the combination of nonce variation and the 
+`nonce' values in two PDF files, each with differing contents, in such a way 
+that the resultant hash is identical. This collision is produced through the combination of nonce variation and the 
 Birthday Attack principle, which proves that collision probability increases 
 rapidly with less trials than is intuitively expected. 
 
@@ -90,54 +88,42 @@ rapidly with less trials than is intuitively expected.
 %==============================================================================
 
 The implemented search strategy uses a Hash-Table data structure to store and 
-search through the calculated hashes. Rather than comparing every possible 
+search through calculated hashes. Rather than comparing every possible 
 nonce produced from one PDF file to the other, each calculated (hash+file) 
-combination is checked against those already in the table. Essentially, rather 
-than checking whether a match occurs with one specific hash, the program checks 
-whether a match occurs between any two hashes. 
+combination is stored in the hash table. Then when a new hash is generated, it is
+compared against those previously stored in the table. 
 
-The $\texttt{toy\_hash()}$ algorithm produces 48-bit hashes, meaning there are $2^{48}$ 
-possible hashes. Using the Birthday Paradox, the expected number of trials for 
-a 50\% collision probability follows $2^{\sqrt{48}}=2^{24}$, meaning 
-only ~16-17 million calculations are required to achieve this 50\% probability.
-To find an upper bound for the calculation process, the following formula can 
-be used: $P(\text{No Collision})\approx e^{-\frac{n^2}{2H}}$, where $n$ is the 
-number of trials required to achieve $P$ probability of no collision when there 
+The $\texttt{toy\_hash()}$ algorithm produces 48-bit hashes, giving $2^{48}$ 
+possible hash outputs. Using the Birthday Paradox, the expected number of trials for 
+a 50\% collision probability follows $2^{\sqrt{48}}=2^{24}$, or ~16-17 million values, 
+are required to achieve a 50\% collision probability.
+The probability of no collision occurring can be calculated using the following: 
+$P(\text{No Collision})\approx e^{-\frac{n^2}{2H}}$, where $n$ is the 
+number of trials required to achieve $P$ probability where there 
 are $H$ possible outputs. For a 99\% chance of producing a collision:
 
 $$0.01=e^{-\frac{n^2}{2\times2^{48}}}\quad\rightarrow\quad n\approx51,000,000$$
 
-For the stated reason above, the maximum number of iterations is capped at 
-50,000,000, as this will give a very high probability of collision and won't 
-require a huge initial memory allocation.
+The loop is limited to 50,000,000 iterations, giving a high probability of producing 
+a collision while limiting the memory being used.
 
-To store generated hashes, a hash table has been implemented using linear 
-probing. Each entry, $\texttt{HashEntry}$, contains a 64-bit tag and a 64-bit nonce, 
-making each entry 16 bytes. The $\texttt{tag}$ attribute combines the PDF file number 
-(1 or 2) and the 48-bit file hash, making efficient use of space and allowing 
-the program to distinguish hashes from PDF1 and PDF2. This table is initialised 
-using $\texttt{calloc}$, making each entry 0. Whenever a new hash is generated, the 
-lowest 27 bits of the hash value are used to calculate the insertion index in 
-the hash table. If slot is already allocated, linear probing is performed to 
-find the next free slot. The produced hashes and file identifiers are then 
-checked against previous ones, allowing the collision detection between the two 
-PDFs. 
-
-The hash table created contains $2^{27}$ 16-byte entries, meaning the table 
-uses just over 2GB. 
+To store and find collisions, the hash table uses linear probing. Each $\texttt{HashEntry}$ 
+contains a 64-bit tag and 64-bit nonce, 16 bytes total. The $\texttt{tag}$ attribute combines 
+the PDF number with the corresponding 48-bit file hash, allowing the program to distinguish 
+hashes between PDFs. This table is initialised using $\texttt{calloc}$, representing empty 
+slots with 0. The lowest 27 bits of the hash are used to to find the first insertion index 
+to try, where the linear probing strategy is then used if it is occupied.
 
 %==============================================================================
 \section{Parallelisation with OpenMP}
 %==============================================================================
 
-The serial implementation works by assigning a different nonce to each PDF in 
-every loop iteration, then calculating the hash for both files. These hashes 
-are then checked against the hash table, if either of them match a hash which 
-was produced by the other PDF, then a collision is found and the collision pair 
-is returned (if no collision is found then the two are inserted in the table). 
-The table insertion is done through a function named $\texttt{insert\_or\_match()}$, which 
-performs the lookup and probing outlined in the birthday attack section. The 
-basic process is as follows:
+The serial implementation assings a different nonce to each PDF in 
+every iteration, then calculating the hash for both files. These hashes 
+are then checked against the hash table using $\texttt{insert\_or\_match()}$. 
+If either hash matches one which was produced by the other PDF, a collision/match 
+is found and the nonces are returned. If not, then both hashes are inserted and 
+the program continues searching.
 
 \begin{center}
     \begin{tabular}{l}
@@ -149,58 +135,47 @@ basic process is as follows:
     \end{tabular}
 \end{center}
 
-The parallel implementation works by splitting the nonce generation and the PDF 
-hashing across multiple threads in a $\texttt{parallel}$ region. The main $\texttt{for}$ loop is split into a parallel 
-region with $\texttt{schedule(static)}$, as each iteration performs a 
-similar amount of work. 
+The parallel implementation splits the nonce generation and hashing across multiple 
+threads in a $\texttt{parallel}$ region, using a $\texttt{for}$ with $\texttt{schedule(static)}$. 
+Static scheduling is the ideal choice for this as each iteration does a similar amount of work.
 
-Each thread creates its own copies of the two PDFs so that the $\texttt{set\_nonce()}$ 
-function doesn't continuously overwrite each thread's contents (which could 
-cause incorrect hash calculations), eliminating a race condition. The hash 
+Each thread creates local copies of the two PDFs so that $\texttt{set\_nonce()}$ 
+can alter nonces without interference between threads, preventing a data race and threads 
+overwriting each others PDF contents during hash calculations. The hash 
 table is shared between all threads, so the lookup and insertion operations are 
-isolated inside a critical region. This way, there will be no data races 
-occurring in the shared table. Without this critical region, two threads could 
-simultaneously try to insert a hash value in the same hash table location, 
-making the table state inconsistent. The critical region ensures that only 1 
-thread accesses the table at a time. 
+isolated inside a $\texttt{critical}$ region. Without this region, numerous threads could 
+concurrently access the same location in the hash table, potentially leading to the table being 
+inconsistent.
 
-The computationally expensive operations are placed outside of this critical 
-region, with those being $\texttt{set\_nonce()}$ and $\texttt{toy\_hash()}$. This minimises the 
-size of the critical region and the time that threads are prevented from 
-running concurrently. The $\texttt{found}$ variable is also shared, which in the serial 
-implementation checks whether a collision has occurred. In the parallel code, 
-this variable needs to be synchronised so that all threads know when a 
-collision has occurred. Each iteration $\texttt{atomic read}$'s the $\texttt{found}$ variable before 
-entering the table checker, which makes sure that any collision is detected. 
-Upon entering the critical region, this $\texttt{found}$ value is checked again, as 
-there is a possibility that a collision has occurred within the small time 
-frame between the initial check and the critical region.
+The computationally expensive operations of $\texttt{set\_nonce()}$ and $\texttt{toy\_hash()}$ 
+are deliberately left outside the critical region. This minimises the wait time for threads to 
+access the shared hash table and allows most computation to continue simultaneously.
 
-There are a couple of trade-offs with this approach, and these are discussed 
-further in the following section.
+The $\texttt{found}$ variable is also shared, and is therefore synchronised in the parallel 
+code using an $\texttt{atomic read}$ before each iteration proceeds with their computation 
+(skipping the expensive functions if $\texttt{found}$ is true). Inside the critical region it 
+is checked again, as a thread may have found a collision between the initial check and the 
+critical region. This makes sure the first detected collision is used, avoiding unnecessary 
+computation.
 
 %==============================================================================
 \section{Memory Usage \& Trade-Offs}
 %==============================================================================
 
-As stated in the \hyperref[sec:bday]{Birthday-attack algorithm}, the hash table 
-size is set as $2^{27}\times16 \text{ Bytes}\approx2\text{GB}$ bytes, capping 
-the memory at just over 2 gigabytes. This was picked to ensure that the maximum 
-50,000,000 trials (for each PDF) can be stored while having some space 
-remaining to minimise hash table probing collisions. While dynamic hash table 
-size increasing would have been more memory efficient, this would have created 
-a much longer running time, hence it was decided to allocate the large initial 
-hash table.
+The hash table size is set as $2^{27}\times16$ bytes, capping 
+the memory at just over 2GB. This was chosen to ensure that the maximum 
+50,000,000 trials (for each PDF) can be stored while leaving space 
+to minimise hash table probing conflicts. While dynamic hash table 
+sizing could be more memory efficient, runtime resizing would increase the 
+execution time. Therefore the initial allocation was large to improve speed.
 
-A particular trade-off made in the use of a critical region instead of a multi-
-partitioned table as the critical region approach has it's speed limited by the 
-shared table. Increasing the thread count will increase the concurrent nonce 
-and hash calculations, but the critical region means only one thread can access 
-the table at a time, bottlenecking the program. An alternative to this could be 
-a partitioned hash table (mentioned in the task brief), where different threads 
-can access different partitions side by side. The partitioned approach would 
-have produced a speed-up, however it would likely have been much more difficult 
-to implement. The possibility for increased speed was traded for simplicity.
+Using a single critical region instead of a partitioned hash table was another 
+trade-off. The region ensures correct access to the shared hash table, but only 
+a single thread can access it at a time. While increasing the thread count can 
+allow greater nonce generation and concurrent hashing, the table access becomes 
+a bottleneck, limiting the speed-up. A partitioned table could reduce this by 
+allowing threads to access partitions simultaneously. This was more complex to 
+implement, so the simpler solution was chosen.
 
 %==============================================================================
 \section{Performance Evaluation}
