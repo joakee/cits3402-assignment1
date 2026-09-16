@@ -177,19 +177,115 @@ a bottleneck, limiting the speed-up. A partitioned table could reduce this by
 allowing threads to access partitions simultaneously. This was more complex to 
 implement, so the simpler solution was chosen.
 
+
 %==============================================================================
+\newpage
 \section{Performance Evaluation}
+\label{sec:perf}
 %==============================================================================
 
+% colours for the speedup figure (one per pair, validated categorical order)
+\definecolor{perfkilo}{HTML}{2A78D6}
+\definecolor{perfmega}{HTML}{EB6834}
+\definecolor{perfgiga}{HTML}{1BAF7A}
+\definecolor{perftera}{HTML}{EDA100}
+\definecolor{perfpeta}{HTML}{E87BA4}
+\definecolor{perfexa}{HTML}{008300}
+\definecolor{perfideal}{HTML}{898781}
+\definecolor{perfgrid}{HTML}{E1E0D9}
+
+%------------------------------------------------------------------------------
 \subsection{Methodology}
+%------------------------------------------------------------------------------
+
+To evaluate the performance of our paralell implementation, we timed the the parallel implementation on Kaya. For each pair of PDFs, time was measured for various thread counts (\Cref{tab:perf-runs}); certain low-thread counts omitted to avoid exceeding the 15-minute time limit. The search time was measured using \texttt{CLOCK\_MONOTONIC} around the parallel region, excluding file I/O.
 
 
 
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{l r *{6}{r}}
+    \toprule
+         &           & \multicolumn{6}{c}{Threads} \\
+    \cmidrule(l){3-8}
+    Pair & PDF (KiB) & 8 & 16 & 32 & 48 & 64 & 96 \\
+    \midrule
+    \multicolumn{8}{l}{\textit{Search time (s)}} \\
+    Kilo  &  64 & 226.8 & 195.5 &  59.7 &  50.2 &  63.2 &  61.2 \\
+    Mega  & 128 &    -- & 327.7 & 172.9 &  61.4 &  47.3 &  48.4 \\
+    Giga  & 224 &    -- &    -- & 193.7 & 167.5 &  42.7 & 170.6 \\
+    Tera  & 336 &    -- &    -- & 191.2 & 430.3 & 192.7 & 132.8 \\
+    Peta  & 480 &    -- &    -- &    -- & 333.9 & 158.7 & 111.6 \\
+    Exa   & 900 &    -- &    -- &    -- & 476.3 &    -- & 448.8 \\
+    \midrule
+    \multicolumn{8}{l}{\textit{Estimated nonce pairs checked (millions)}} \\
+    Kilo  &  64 &  14.0 &  24.2 &  14.4 &  18.2 &  28.8 &  36.4 \\
+    Mega  & 128 &    -- &  20.3 &  21.1 &  11.0 &  10.6 &  13.4 \\
+    Giga  & 224 &    -- &    -- &  13.7 &  17.8 &   5.9 &  33.9 \\
+    Tera  & 336 &    -- &    -- &   9.0 &  30.3 &  18.1 &  17.2 \\
+    Peta  & 480 &    -- &    -- &    -- &  16.6 &   9.1 &  10.6 \\
+    Exa   & 900 &    -- &    -- &    -- &  12.6 &    -- &  23.4 \\
+    \bottomrule
+  \end{tabular}
+  \caption{\textit{Search time and estimated pairs checked per run on Kaya}}
+  \label{tab:perf-runs}
+\end{table}
 
-\subsection{Speedup and scalability}
 
-\subsection{Discussion}
 
+%------------------------------------------------------------------------------
+\subsection{Timings speedup, scalability and bottlenecks}
+%------------------------------------------------------------------------------
+
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+        width=0.82\linewidth, height=6.8cm,
+        xlabel={Threads}, ylabel={Speedup},
+        xmin=0, xmax=100, ymin=0, ymax=100,
+        xtick={8,16,32,48,64,96}, ytick={0,16,32,48,64,80,96},
+        tick label style={font=\small}, label style={font=\small},
+        grid=major, grid style={draw=perfgrid, line width=0.3pt},
+        axis line style={draw=perfideal}, tick style={draw=none},
+        legend pos=north west, legend cell align=left,
+        legend style={draw=none, fill=none, font=\footnotesize},
+        every axis plot/.append style={line width=1pt, mark size=2.6pt},
+      ]
+      \addplot[draw=perfideal, dashed, line width=0.8pt, domain=0:96, samples=2] {x};
+      \addlegendentry{Ideal}
+      \addplot[color=perfkilo, mark=*, mark options={solid, draw=white, fill=perfkilo}]
+        coordinates {(8,8.0) (16,16.0) (32,31.2) (48,46.9) (64,59.0) (96,77.0)};
+      \addlegendentry{Kilo}
+      \addplot[color=perfmega, mark=*, mark options={solid, draw=white, fill=perfmega}]
+        coordinates {(16,16.0) (32,31.5) (48,46.3) (64,57.9) (96,71.5)};
+      \addlegendentry{Mega}
+      \addplot[color=perfgiga, mark=*, mark options={solid, draw=white, fill=perfgiga}]
+        coordinates {(32,32.0) (48,47.8) (64,62.1) (96,89.7)};
+      \addlegendentry{Giga}
+      \addplot[color=perftera, mark=*, mark options={solid, draw=white, fill=perftera}]
+        coordinates {(32,32.0) (48,47.7) (64,63.5) (96,87.5)};
+      \addlegendentry{Tera}
+      \addplot[color=perfpeta, mark=*, mark options={solid, draw=white, fill=perfpeta}]
+        coordinates {(48,48.0) (64,55.3) (96,92.1)};
+      \addlegendentry{Peta}
+      \addplot[color=perfexa, mark=*, mark options={solid, draw=white, fill=perfexa}]
+        coordinates {(48,48.0) (96,94.5)};
+      \addlegendentry{Exa}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{\textit{Speedup from throughput, relative to each pair's lowest measured thread count.}}
+  \label{fig:perf-speedup}
+\end{figure}
+
+
+We observed that raw search times weren't monotonic with thread count, (e.g, Giga took 42.7 s on 64 threads but 170.6 s on 96 threads). We initially suspected this was due to the way NUMA caused  latency to the hash table's memory region, but, it turns out that the 96-thread run checked an estimated 33.9M pairs rather than 5.9M, while hashing $1.44\times$ faster. THis suggested that the static scheduling of the colliding nonces is the main factor in the elapsed time, not the speed of hashing. \\
+
+Therefore, rather than using elapsed time, speedup was measured as a function of throughput (pairs checked / search time). A serial baseline would have been an inconsiderate use of HPC resources, thus, assuming linear scaling below the lowest measured thread count, speedup was calculated relative to the lowest thread count for each pair. This showed a near-linear speedup up to 48 threads for every pair, with efficiency ranging from 97-100\%.
+
+Since a serial baseline would exceed the 15-minute limit, speedup was calculated relative to each pair's lowest measured thread count, assuming linear scaling below it. This revealed near-linear speedup up to 48 threads for every pair, with efficiency ranging from 97-100\%.
 
 %==============================================================================
 \section{Conclusion}
@@ -197,6 +293,5 @@ implement, so the simpler solution was chosen.
 
 %==============================================================================
 \appendix
-\section{Reproducing the results}
 
 \end{document}
