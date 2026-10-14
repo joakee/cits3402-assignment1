@@ -1,4 +1,6 @@
-# Brute Force Hash Birthday Attack in Parallel
+# CITS3402 - High Performance Computing: Assignment 1
+
+## Brute Force Hash Birthday Attack in Parallel
 
 #### Built by: James Oakey (22709404) & Brent Tankink (23842541)
 
