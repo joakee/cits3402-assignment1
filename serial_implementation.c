@@ -43,7 +43,7 @@ typedef struct HashEntry {
 
 // every pass of the search loop adds at most 2 entries, so MAX_TRIES keeps
 // the table at most about 75% full to make sure the probe is given an empty slot
-_Static_assert(2 * MAX_TRIES < TABLE_CAP, "MAX_TRIES would overflow the table"); // IS THIS PART NECESSARY? IT IS HARD-CODED
+_Static_assert(2 * MAX_TRIES < TABLE_CAP, "MAX_TRIES would overflow the table");
 
 // reads the whole pdf into memory
 // returns the buffer (in which case the caller frees), or returns NULL
